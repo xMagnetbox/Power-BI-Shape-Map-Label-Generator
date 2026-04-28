@@ -1,532 +1,1062 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Geo Dot-Matrix Label Generator</title>
-<style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;
-     background:#edf2f7;color:#2d3748;padding:20px 16px;line-height:1.5}
-.wrap{max-width:1020px;margin:0 auto}
-h1{font-size:1.75rem;color:#2b6cb0;font-weight:800}
-.sub{color:#718096;margin-top:4px;font-size:.93rem;margin-bottom:22px}
-.card{background:#fff;border-radius:12px;padding:22px 24px;margin-bottom:18px;
-      box-shadow:0 1px 4px rgba(0,0,0,.1),0 0 0 1px rgba(0,0,0,.04)}
-.ct{font-size:1rem;font-weight:700;color:#4a5568;margin-bottom:14px;
-    padding-bottom:8px;border-bottom:2px solid #e2e8f0}
-.note{background:#ebf8ff;border-left:4px solid #4299e1;border-radius:0 6px 6px 0;
-      padding:9px 13px;font-size:.84rem;color:#2c5282;margin-bottom:14px;line-height:1.5}
-
-/* Label grid */
-.th,.lr{display:grid;grid-template-columns:1.5fr .7fr .7fr 1fr 34px;
-        gap:8px;align-items:center}
-.th{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
-    color:#718096;padding-bottom:6px;border-bottom:2px solid #e2e8f0;margin-bottom:4px}
-.lr{padding:5px 0;border-bottom:1px solid #f7fafc}
-.lr:last-child{border-bottom:none}
-input[type=text],input[type=number]{width:100%;padding:7px 10px;
-  border:1.5px solid #cbd5e0;border-radius:6px;font-size:.87rem;color:#2d3748;
-  background:#fff;transition:border-color .15s,box-shadow .15s}
-input:focus{outline:none;border-color:#4299e1;
-            box-shadow:0 0 0 3px rgba(66,153,225,.15)}
-
-/* Preview */
-.pvw{overflow:hidden;background:#f7fafc;border:1px solid #e2e8f0;
-     border-radius:4px;padding:2px 4px;height:20px;display:flex;align-items:center}
-canvas.pc{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
-
-/* Paste textarea */
-textarea{width:100%;padding:9px 11px;
-         border:1.5px solid #cbd5e0;border-radius:6px;
-         font-family:'SFMono-Regular',Consolas,monospace;
-         font-size:.82rem;color:#2d3748;resize:vertical;
-         line-height:1.6;min-height:90px;
-         transition:border-color .15s,box-shadow .15s}
-textarea:focus{outline:none;border-color:#4299e1;
-               box-shadow:0 0 0 3px rgba(66,153,225,.15)}
-.paste-ok{font-size:.83rem;color:#276749;font-weight:600}
-.paste-err{font-size:.83rem;color:#c53030;font-weight:600}
-
-/* Buttons */
-.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;
-     border:none;border-radius:7px;font-size:.87rem;font-weight:600;cursor:pointer;
-     transition:filter .15s,transform .1s;white-space:nowrap;line-height:1}
-.btn:hover{filter:brightness(1.07);transform:translateY(-1px)}
-.btn:active{transform:none}
-.blue{background:#3182ce;color:#fff}
-.grn{background:#38a169;color:#fff}
-.gry{background:#718096;color:#fff}
-.add{background:#ebf8ff;color:#2b6cb0;border:1.5px dashed #90cdf4}
-.rm{background:transparent;color:#fc8181;border:1.5px solid #fed7d7;
-    padding:4px 9px;font-size:1.1rem}
-.go{font-size:1rem;padding:13px 32px;
-    background:linear-gradient(135deg,#3182ce,#2b6cb0);
-    border-radius:10px;box-shadow:0 4px 12px rgba(49,130,206,.3)}
-.br{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center}
-
-/* Options */
-.og{display:grid;grid-template-columns:1fr 1fr;gap:18px}
-@media(max-width:600px){.og{grid-template-columns:1fr}}
-.oi label{display:block;font-weight:600;font-size:.85rem;margin-bottom:5px;color:#4a5568}
-.oi small{display:block;font-size:.77rem;color:#718096;margin-top:4px;line-height:1.4}
-.gw{display:flex;justify-content:center;margin:4px 0 18px}
-
-/* Output */
-.ob{font-family:'SFMono-Regular',Consolas,monospace;font-size:11.5px;
-    background:#1a202c;color:#68d391;border-radius:8px;padding:14px;
-    height:250px;overflow:auto;white-space:pre;margin-top:12px;line-height:1.65}
-.pill{background:#e2e8f0;border-radius:999px;padding:3px 10px;
-      font-size:.77rem;color:#4a5568}
-
-/* Steps */
-.steps{margin-top:18px;padding-top:14px;border-top:2px solid #e2e8f0}
-.steps h3{font-size:.9rem;font-weight:700;margin-bottom:8px;color:#4a5568}
-.step{display:flex;gap:10px;align-items:flex-start;
-      margin-bottom:7px;font-size:.83rem;line-height:1.5}
-.sn{background:#3182ce;color:#fff;border-radius:50%;min-width:20px;height:20px;
-    display:flex;align-items:center;justify-content:center;
-    font-size:.7rem;font-weight:700;flex-shrink:0;margin-top:1px}
-#os{display:none}
-footer{text-align:center;font-size:.75rem;color:#a0aec0;
-       margin-top:24px;padding-bottom:16px}
-code{background:#e2e8f0;padding:1px 5px;border-radius:3px;
-     font-family:monospace;font-size:.82em}
-</style>
-</head>
-<body>
-<div class="wrap">
-
-<h1>🗺️ Geo Dot-Matrix Label Generator</h1>
-<p class="sub">Generate GeoJSON polygon text labels for embedding in Power BI Shape Maps.
-Each character is built from rectangular polygons using a 5×7 dot-matrix pixel font.</p>
-
-<!-- PASTE FROM SPREADSHEET -->
-<div class="card">
-  <div class="ct">📋 Paste from Spreadsheet</div>
-  <div class="note">
-    In Excel or Google Sheets, select your <strong>Label</strong>, <strong>Latitude</strong>,
-    and <strong>Longitude</strong> columns and copy them (<kbd>Ctrl+C</kbd>).
-    Paste directly into the box below — a header row is fine, it will be ignored automatically.
-    Rows will appear in the manual editor below so you can review or adjust them.
-  </div>
-  <textarea id="pasteArea"
-            placeholder="Paste copied spreadsheet cells here (Label ⇥ Latitude ⇥ Longitude)&#10;&#10;e.g.&#10;NORTH YORKSHIRE	54.10	-1.80&#10;EAST RIDING	53.82	-0.50"
-            onpaste="setTimeout(importPaste, 20)"></textarea>
-  <div class="br">
-    <button class="btn blue" onclick="importPaste()">⬆ Import Rows</button>
-    <button class="btn gry" style="font-size:.8rem;padding:5px 11px"
-            onclick="clearPaste()">Clear Paste Area</button>
-    <span id="pasteMsg"></span>
-  </div>
-</div>
-
-<!-- LABELS -->
-<div class="card">
-  <div class="ct">📝 Labels <span style="font-size:.78rem;font-weight:400;color:#718096">
-    — review and adjust as needed, or enter manually</span></div>
-  <div class="note">
-    All text is automatically <strong>converted to UPPERCASE</strong>.
-    Enter the <strong>bottom-left corner</strong> (decimal degrees, WGS84) of each label.
-    Unsupported characters (e.g. accented letters) are silently skipped.
-  </div>
-  <div class="th">
-    <span>Label Text</span>
-    <span>Latitude (°N/S)</span>
-    <span>Longitude (°E/W)</span>
-    <span>Live Preview</span>
-    <span></span>
-  </div>
-  <div id="lbls"></div>
-  <div class="br">
-    <button class="btn add" onclick="addRow()">＋ Add Label</button>
-    <button class="btn gry" style="font-size:.8rem;padding:5px 11px"
-            onclick="clearAll()">Clear All</button>
-  </div>
-</div>
-
-<!-- OPTIONS -->
-<div class="card">
-  <div class="ct">⚙️ Rendering Options</div>
-  <div class="og">
-    <div class="oi">
-      <label for="pxs">Pixel Size (degrees)</label>
-      <input type="number" id="pxs" value="0.015" step="0.001" min="0.001" max="2">
-      <small>Size of each dot in geographic degrees.<br>
-        <strong>UK tip:</strong> 0.01–0.02° ≈ 700m–1.4 km per dot at 54°N.<br>
-        Larger value = bigger text on the map.</small>
-    </div>
-    <div class="oi">
-      <label for="chs">Character Spacing (dot-widths)</label>
-      <input type="number" id="chs" value="6" step="0.5" min="5" max="20">
-      <small>Horizontal space per character. The font is 5 dots wide, so:<br>
-        <strong>5</strong> = characters touch &nbsp;·&nbsp;
-        <strong>6</strong> = 1-dot gap (recommended)</small>
-    </div>
-  </div>
-</div>
-
-<!-- GENERATE -->
-<div class="gw">
-  <button class="btn blue go" onclick="generate()">⚡ Generate GeoJSON</button>
-</div>
-
-<!-- OUTPUT -->
-<div class="card" id="os">
-  <div class="ct">📦 Output</div>
-  <div class="br">
-    <button class="btn grn" onclick="dlJSON()">⬇ Download .geojson</button>
-    <button class="btn gry" onclick="cpJSON(this)">📋 Copy to Clipboard</button>
-    <span class="pill" id="stats"></span>
-  </div>
-  <div class="ob" id="ob"></div>
-
-  <div class="steps">
-    <h3>Next Steps — Power BI Shape Map Workflow</h3>
-    <div class="step"><div class="sn">1</div>
-      <div>Download the <code>.geojson</code> file above.</div></div>
-
-    <div class="step"><div class="sn">2</div>
-      <div>Go to <strong>mapshaper.org</strong> → Import your geography's file (can
-	  be GeoJSON or TopoJSON, it doesn't seem to matter)
-      <strong>FIRST</strong> → also import this GeoJSON → Export both of these
-	  layers as TopoJSON.</div></div>
-
-    <div class="step"><div class="sn">3</div>
-      <div>Open <strong>geojson.io</strong> → import the merged TopoJSON →
-      <em>Meta → Flatten Multi Features</em>. This bakes the letter polygons
-      into the base-map topology so Power BI always renders them. Also, change the 
-	  file extension from .topojson to just .json (Power BI doesn't recognize the 
-	  .topojson extension 😔).</div></div>
-    <div class="step"><div class="sn">4</div>
-      <div>Load the result into Power BI's <strong>Shape Map</strong> visual
-      as a custom map.</div></div>
-    <div class="step"><div class="sn">5</div>
-      <div>In Power BI: <em>Format pane → Fill colors → Default color</em>
-      to choose your label color. Labels are always visible, independent of
-      the data layer.</div></div>
-    <div class="step"><div class="sn">💡</div>
-      <div>To reposition labels, adjust the lat/lng values here and regenerate.
-      You only need to redo the Mapshaper merge when the GeoJSON changes.</div></div>
-  </div>
-</div>
-
-<footer>Geographic dot-matrix label generator &bull;
-5×7 pixel font → GeoJSON polygon geometry &bull; For Power BI Shape Maps</footer>
-</div><!-- /wrap -->
-
-<script>
-// ═══════════════════════════════════════════════════════════════════
-// 5×7 DOT-MATRIX FONT
-// ═══════════════════════════════════════════════════════════════════
-const FONT = {
-  ' ':[[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]],
-  'A':[[0,1,1,1,0],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1]],
-  'B':[[1,1,1,1,0],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,0],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,0]],
-  'C':[[0,1,1,1,0],[1,0,0,0,1],[1,0,0,0,0],[1,0,0,0,0],[1,0,0,0,0],[1,0,0,0,1],[0,1,1,1,0]],
-  'D':[[1,1,1,1,0],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,0]],
-  'E':[[1,1,1,1,1],[1,0,0,0,0],[1,0,0,0,0],[1,1,1,1,0],[1,0,0,0,0],[1,0,0,0,0],[1,1,1,1,1]],
-  'F':[[1,1,1,1,1],[1,0,0,0,0],[1,0,0,0,0],[1,1,1,1,0],[1,0,0,0,0],[1,0,0,0,0],[1,0,0,0,0]],
-  'G':[[0,1,1,1,0],[1,0,0,0,1],[1,0,0,0,0],[1,0,0,1,1],[1,0,0,0,1],[1,0,0,0,1],[0,1,1,1,0]],
-  'H':[[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1]],
-  'I':[[0,1,1,1,0],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0],[0,1,1,1,0]],
-  'J':[[0,0,1,1,1],[0,0,0,1,0],[0,0,0,1,0],[0,0,0,1,0],[1,0,0,1,0],[1,0,0,1,0],[0,1,1,0,0]],
-  'K':[[1,0,0,0,1],[1,0,0,1,0],[1,0,1,0,0],[1,1,0,0,0],[1,0,1,0,0],[1,0,0,1,0],[1,0,0,0,1]],
-  'L':[[1,0,0,0,0],[1,0,0,0,0],[1,0,0,0,0],[1,0,0,0,0],[1,0,0,0,0],[1,0,0,0,0],[1,1,1,1,1]],
-  'M':[[1,0,0,0,1],[1,1,0,1,1],[1,0,1,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1]],
-  'N':[[1,0,0,0,1],[1,1,0,0,1],[1,0,1,0,1],[1,0,0,1,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1]],
-  'O':[[0,1,1,1,0],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[0,1,1,1,0]],
-  'P':[[1,1,1,1,0],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,0],[1,0,0,0,0],[1,0,0,0,0],[1,0,0,0,0]],
-  'Q':[[0,1,1,1,0],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,1,0,0],[1,0,0,1,0],[0,1,1,0,1]],
-  'R':[[1,1,1,1,0],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,0],[1,0,1,0,0],[1,0,0,1,0],[1,0,0,0,1]],
-  'S':[[0,1,1,1,0],[1,0,0,0,1],[1,0,0,0,0],[0,1,1,1,0],[0,0,0,0,1],[1,0,0,0,1],[0,1,1,1,0]],
-  'T':[[1,1,1,1,1],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0]],
-  'U':[[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[0,1,1,1,0]],
-  'V':[[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[0,1,0,1,0],[0,0,1,0,0]],
-  'W':[[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,1,0,1],[1,0,1,0,1],[1,1,0,1,1],[0,1,0,1,0]],
-  'X':[[1,0,0,0,1],[1,0,0,0,1],[0,1,0,1,0],[0,0,1,0,0],[0,1,0,1,0],[1,0,0,0,1],[1,0,0,0,1]],
-  'Y':[[1,0,0,0,1],[1,0,0,0,1],[0,1,0,1,0],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0]],
-  'Z':[[1,1,1,1,1],[0,0,0,0,1],[0,0,0,1,0],[0,0,1,0,0],[0,1,0,0,0],[1,0,0,0,0],[1,1,1,1,1]],
-  '0':[[0,1,1,1,0],[1,0,0,0,1],[1,0,0,1,1],[1,0,1,0,1],[1,1,0,0,1],[1,0,0,0,1],[0,1,1,1,0]],
-  '1':[[0,0,1,0,0],[0,1,1,0,0],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0],[0,1,1,1,0]],
-  '2':[[0,1,1,1,0],[1,0,0,0,1],[0,0,0,0,1],[0,0,0,1,0],[0,0,1,0,0],[0,1,0,0,0],[1,1,1,1,1]],
-  '3':[[0,1,1,1,0],[1,0,0,0,1],[0,0,0,0,1],[0,0,1,1,0],[0,0,0,0,1],[1,0,0,0,1],[0,1,1,1,0]],
-  '4':[[0,0,0,1,0],[0,0,1,1,0],[0,1,0,1,0],[1,0,0,1,0],[1,1,1,1,1],[0,0,0,1,0],[0,0,0,1,0]],
-  '5':[[1,1,1,1,1],[1,0,0,0,0],[1,1,1,1,0],[0,0,0,0,1],[0,0,0,0,1],[1,0,0,0,1],[0,1,1,1,0]],
-  '6':[[0,1,1,1,0],[1,0,0,0,1],[1,0,0,0,0],[1,1,1,1,0],[1,0,0,0,1],[1,0,0,0,1],[0,1,1,1,0]],
-  '7':[[1,1,1,1,1],[0,0,0,0,1],[0,0,0,1,0],[0,0,1,0,0],[0,1,0,0,0],[0,1,0,0,0],[0,1,0,0,0]],
-  '8':[[0,1,1,1,0],[1,0,0,0,1],[1,0,0,0,1],[0,1,1,1,0],[1,0,0,0,1],[1,0,0,0,1],[0,1,1,1,0]],
-  '9':[[0,1,1,1,0],[1,0,0,0,1],[1,0,0,0,1],[0,1,1,1,1],[0,0,0,0,1],[0,0,0,0,1],[0,1,1,1,0]],
-  '-':[[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[1,1,1,1,1],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]],
-  '.':[[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,1,1,0,0],[0,1,1,0,0]],
-  ',':[[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,1,1,0],[0,0,1,1,0],[0,1,0,0,0]],
-  "'":[[0,0,1,1,0],[0,0,1,1,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]],
-  '(':[[0,0,1,0,0],[0,1,0,0,0],[1,0,0,0,0],[1,0,0,0,0],[1,0,0,0,0],[0,1,0,0,0],[0,0,1,0,0]],
-  ')':[[0,0,1,0,0],[0,0,0,1,0],[0,0,0,0,1],[0,0,0,0,1],[0,0,0,0,1],[0,0,0,1,0],[0,0,1,0,0]],
-  '/':[[0,0,0,0,1],[0,0,0,1,0],[0,0,0,1,0],[0,0,1,0,0],[0,1,0,0,0],[0,1,0,0,0],[1,0,0,0,0]],
-  '&':[[0,1,1,0,0],[1,0,0,1,0],[1,0,1,0,0],[0,1,0,0,0],[1,0,1,0,1],[1,0,0,1,0],[0,1,1,0,1]],
-};
-
-// ═══════════════════════════════════════════════════════════════════
-// GEOMETRY
-// ═══════════════════════════════════════════════════════════════════
-function mergeRects(grid) {
-  const R = grid.length, C = grid[0].length;
-  const used = Array.from({length: R}, () => new Array(C).fill(false));
-  const out = [];
-  for (let r = 0; r < R; r++) {
-    for (let c = 0; c < C; c++) {
-      if (!grid[r][c] || used[r][c]) continue;
-      let w = 1;
-      while (c + w < C && grid[r][c + w] && !used[r][c + w]) w++;
-      let h = 1;
-      outer: while (r + h < R) {
-        for (let dc = 0; dc < w; dc++)
-          if (!grid[r + h][c + dc] || used[r + h][c + dc]) break outer;
-        h++;
-      }
-      for (let dr = 0; dr < h; dr++)
-        for (let dc = 0; dc < w; dc++)
-          used[r + dr][c + dc] = true;
-      out.push({ r, c, w, h });
-    }
-  }
-  return out;
-}
-
-const CHAR_H = 7;
-
-function textToFeatures(text, baseLat, baseLng, ps, cs) {
-  const upper = text.toUpperCase();
-  const feats = [];
-  for (let i = 0; i < upper.length; i++) {
-    const grid = FONT[upper[i]] || FONT[' '];
-    const xOff = i * cs * ps;
-    for (const { r, c, w, h } of mergeRects(grid)) {
-      const bot = baseLat + (CHAR_H - r - h) * ps;
-      const top = baseLat + (CHAR_H - r)     * ps;
-      const lft = baseLng + xOff +  c      * ps;
-      const rgt = baseLng + xOff + (c + w) * ps;
-      feats.push({
-        type: 'Feature',
-        properties: { label: text },
-        geometry: {
-          type: 'Polygon',
-          coordinates: [[[lft,bot],[rgt,bot],[rgt,top],[lft,top],[lft,bot]]]
-        }
-      });
-    }
-  }
-  return feats;
-}
-
-function buildGeoJSON(labels, ps, cs) {
-  return {
-    type: 'FeatureCollection',
-    features: labels.flatMap(l => textToFeatures(l.text, l.lat, l.lng, ps, cs))
-  };
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// CANVAS PREVIEW
-// ═══════════════════════════════════════════════════════════════════
-const PX = 2;
-
-function drawPreview(id, text) {
-  const cv = document.getElementById('cv' + id);
-  if (!cv) return;
-  const up = text.toUpperCase();
-  cv.width  = Math.max(10, up.length * 6 * PX + 2);
-  cv.height = CHAR_H * PX + 2;
-  const ctx = cv.getContext('2d');
-  ctx.clearRect(0, 0, cv.width, cv.height);
-  ctx.fillStyle = '#2b6cb0';
-  for (let i = 0; i < up.length; i++) {
-    const g = FONT[up[i]] || FONT[' '];
-    const xb = i * 6 * PX + 1;
-    for (let r = 0; r < CHAR_H; r++)
-      for (let c = 0; c < 5; c++)
-        if (g[r][c]) ctx.fillRect(xb + c * PX, 1 + r * PX, PX, PX);
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// SPREADSHEET PASTE IMPORT
-// ═══════════════════════════════════════════════════════════════════
-
-/**
- * Parses tab-separated text copied from Excel / Google Sheets.
- * Expects columns: Label \t Latitude \t Longitude
- * Rows where Latitude or Longitude aren't numeric are silently
- * skipped — this naturally discards any header row.
- */
-function parseTSV(raw) {
-  const results = [];
-  for (const line of raw.trim().split(/\r?\n/)) {
-    if (!line.trim()) continue;
-    const cols = line.split('\t');
-    if (cols.length < 3) continue;
-    const text = cols[0].trim();
-    const lat  = parseFloat(cols[1]);
-    const lng  = parseFloat(cols[2]);
-    // Skip empty text or non-numeric coords (catches header rows)
-    if (!text || isNaN(lat) || isNaN(lng)) continue;
-    results.push({ text, lat, lng });
-  }
-  return results;
-}
-
-function importPaste() {
-  const raw = document.getElementById('pasteArea').value;
-  if (!raw.trim()) return; // nothing pasted yet — ignore silent auto-trigger
-
-  const rows = parseTSV(raw);
-  const msg  = document.getElementById('pasteMsg');
-
-  if (!rows.length) {
-    msg.className = 'paste-err';
-    msg.textContent = '⚠ No valid rows found — check columns are Label, Latitude, Longitude';
-    setTimeout(() => { msg.textContent = ''; }, 4000);
-    return;
-  }
-
-  // Replace label rows with imported data, keep one blank row at the end
-  document.getElementById('lbls').innerHTML = '';
-  uid = 0;
-  for (const r of rows) addRow(r.text, r.lat, r.lng);
-  addRow(); // blank row ready for extras
-
-  msg.className = 'paste-ok';
-  msg.textContent = `✅ ${rows.length} row${rows.length !== 1 ? 's' : ''} imported`;
-  setTimeout(() => { msg.textContent = ''; }, 3000);
-
-  // Scroll down to show the populated label table
-  document.getElementById('lbls').scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-function clearPaste() {
-  document.getElementById('pasteArea').value = '';
-  document.getElementById('pasteMsg').textContent = '';
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// MANUAL LABEL ROW UI
-// ═══════════════════════════════════════════════════════════════════
-let uid = 0;
-let lastJSON = null;
-
-function esc(s) {
-  return String(s)
-    .replace(/&/g,'&amp;').replace(/"/g,'&quot;')
-    .replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
-function addRow(text = '', lat = '', lng = '') {
-  const id = uid++;
-  const el = document.createElement('div');
-  el.className = 'lr';
-  el.id = 'r' + id;
-  el.innerHTML = `
-    <input type="text"   id="t${id}" placeholder="e.g. NORTH YORKSHIRE"
-           value="${esc(text)}" oninput="drawPreview(${id}, this.value)">
-    <input type="number" id="a${id}" placeholder="54.00"
-           value="${esc(lat)}" step="0.001">
-    <input type="number" id="g${id}" placeholder="-1.50"
-           value="${esc(lng)}" step="0.001">
-    <div class="pvw">
-      <canvas class="pc" id="cv${id}"
-              width="10" height="${CHAR_H * PX + 2}"></canvas>
-    </div>
-    <button class="btn rm" onclick="delRow(${id})" title="Remove">×</button>
-  `;
-  document.getElementById('lbls').appendChild(el);
-  if (text) drawPreview(id, text);
-}
-
-function delRow(id) {
-  const el = document.getElementById('r' + id);
-  if (el) el.remove();
-}
-
-function clearAll() {
-  document.getElementById('lbls').innerHTML = '';
-  uid = 0;
-  addRow();
-}
-
-function gather() {
-  const labels = [], errs = [];
-  for (const row of document.querySelectorAll('.lr')) {
-    const id  = row.id.slice(1);
-    const tEl = document.getElementById('t' + id);
-    const aEl = document.getElementById('a' + id);
-    const gEl = document.getElementById('g' + id);
-    if (!tEl) continue;
-    const text = tEl.value.trim();
-    if (!text) continue;
-    const lat  = parseFloat(aEl.value);
-    const lng  = parseFloat(gEl.value);
-    if (isNaN(lat) || isNaN(lng)) {
-      errs.push(`"${text}": missing or invalid coordinates`);
-      continue;
-    }
-    labels.push({ text, lat, lng });
-  }
-  return { labels, errs };
-}
-
-function generate() {
-  const { labels, errs } = gather();
-  if (errs.length)    { alert('Please fix:\n\n' + errs.join('\n')); return; }
-  if (!labels.length) { alert('Add at least one label with text and coordinates.'); return; }
-
-  const ps = Math.abs(parseFloat(document.getElementById('pxs').value)) || 0.015;
-  const cs = Math.abs(parseFloat(document.getElementById('chs').value)) || 6;
-
-  lastJSON = buildGeoJSON(labels, ps, cs);
-  document.getElementById('ob').textContent = JSON.stringify(lastJSON, null, 2);
-  document.getElementById('stats').textContent =
-    `${lastJSON.features.length} polygons · ${labels.length} label(s)`;
-
-  const sec = document.getElementById('os');
-  sec.style.display = 'block';
-  sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-function dlJSON() {
-  if (!lastJSON) return;
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(
-    new Blob([JSON.stringify(lastJSON, null, 2)], { type: 'application/geo+json' })
-  );
-  a.download = 'dot-matrix-labels.geojson';
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
-
-function cpJSON(btn) {
-  const text = document.getElementById('ob').textContent;
-  const orig = btn.textContent;
-  const restore = () => { btn.textContent = orig; };
-  navigator.clipboard.writeText(text)
-    .then(() => { btn.textContent = '✅ Copied!'; setTimeout(restore, 2000); })
-    .catch(() => {
-      const ta = document.createElement('textarea');
-      Object.assign(ta.style, { position:'fixed', top:'0', left:'0', opacity:'0' });
-      ta.value = text;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand('copy');
-      document.body.removeChild(ta);
-      btn.textContent = '✅ Copied!';
-      setTimeout(restore, 2000);
-    });
-}
-
-// ─── Initialise ──────────────────────────────────────────────────
-addRow('NORTH YORKSHIRE', 54.10, -1.80);
-addRow('EAST RIDING',     53.82, -0.50);
-addRow();
-</script>
-</body>
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Geo Dot-Matrix Label Generator</title>
+
+<style>
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;
+
+     background:#edf2f7;color:#2d3748;padding:20px 16px;line-height:1.5}
+
+.wrap{max-width:1020px;margin:0 auto}
+
+h1{font-size:1.75rem;color:#2b6cb0;font-weight:800}
+
+.sub{color:#718096;margin-top:4px;font-size:.93rem;margin-bottom:22px}
+
+.card{background:#fff;border-radius:12px;padding:22px 24px;margin-bottom:18px;
+
+      box-shadow:0 1px 4px rgba(0,0,0,.1),0 0 0 1px rgba(0,0,0,.04)}
+
+.ct{font-size:1rem;font-weight:700;color:#4a5568;margin-bottom:14px;
+
+    padding-bottom:8px;border-bottom:2px solid #e2e8f0}
+
+.note{background:#ebf8ff;border-left:4px solid #4299e1;border-radius:0 6px 6px 0;
+
+      padding:9px 13px;font-size:.84rem;color:#2c5282;margin-bottom:14px;line-height:1.5}
+
+
+
+/* Label grid */
+
+.th,.lr{display:grid;grid-template-columns:1.5fr .7fr .7fr 1fr 34px;
+
+        gap:8px;align-items:center}
+
+.th{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
+
+    color:#718096;padding-bottom:6px;border-bottom:2px solid #e2e8f0;margin-bottom:4px}
+
+.lr{padding:5px 0;border-bottom:1px solid #f7fafc}
+
+.lr:last-child{border-bottom:none}
+
+input[type=text],input[type=number]{width:100%;padding:7px 10px;
+
+  border:1.5px solid #cbd5e0;border-radius:6px;font-size:.87rem;color:#2d3748;
+
+  background:#fff;transition:border-color .15s,box-shadow .15s}
+
+input:focus{outline:none;border-color:#4299e1;
+
+            box-shadow:0 0 0 3px rgba(66,153,225,.15)}
+
+
+
+/* Preview */
+
+.pvw{overflow:hidden;background:#f7fafc;border:1px solid #e2e8f0;
+
+     border-radius:4px;padding:2px 4px;height:20px;display:flex;align-items:center}
+
+canvas.pc{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
+
+
+
+/* Paste textarea */
+
+textarea{width:100%;padding:9px 11px;
+
+         border:1.5px solid #cbd5e0;border-radius:6px;
+
+         font-family:'SFMono-Regular',Consolas,monospace;
+
+         font-size:.82rem;color:#2d3748;resize:vertical;
+
+         line-height:1.6;min-height:90px;
+
+         transition:border-color .15s,box-shadow .15s}
+
+textarea:focus{outline:none;border-color:#4299e1;
+
+               box-shadow:0 0 0 3px rgba(66,153,225,.15)}
+
+.paste-ok{font-size:.83rem;color:#276749;font-weight:600}
+
+.paste-err{font-size:.83rem;color:#c53030;font-weight:600}
+
+
+
+/* Buttons */
+
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;
+
+     border:none;border-radius:7px;font-size:.87rem;font-weight:600;cursor:pointer;
+
+     transition:filter .15s,transform .1s;white-space:nowrap;line-height:1}
+
+.btn:hover{filter:brightness(1.07);transform:translateY(-1px)}
+
+.btn:active{transform:none}
+
+.blue{background:#3182ce;color:#fff}
+
+.grn{background:#38a169;color:#fff}
+
+.gry{background:#718096;color:#fff}
+
+.add{background:#ebf8ff;color:#2b6cb0;border:1.5px dashed #90cdf4}
+
+.rm{background:transparent;color:#fc8181;border:1.5px solid #fed7d7;
+
+    padding:4px 9px;font-size:1.1rem}
+
+.go{font-size:1rem;padding:13px 32px;
+
+    background:linear-gradient(135deg,#3182ce,#2b6cb0);
+
+    border-radius:10px;box-shadow:0 4px 12px rgba(49,130,206,.3)}
+
+.br{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center}
+
+
+
+/* Options */
+
+.og{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+
+@media(max-width:600px){.og{grid-template-columns:1fr}}
+
+.oi label{display:block;font-weight:600;font-size:.85rem;margin-bottom:5px;color:#4a5568}
+
+.oi small{display:block;font-size:.77rem;color:#718096;margin-top:4px;line-height:1.4}
+
+.gw{display:flex;justify-content:center;margin:4px 0 18px}
+
+
+
+/* Output */
+
+.ob{font-family:'SFMono-Regular',Consolas,monospace;font-size:11.5px;
+
+    background:#1a202c;color:#68d391;border-radius:8px;padding:14px;
+
+    height:250px;overflow:auto;white-space:pre;margin-top:12px;line-height:1.65}
+
+.pill{background:#e2e8f0;border-radius:999px;padding:3px 10px;
+
+      font-size:.77rem;color:#4a5568}
+
+
+
+/* Steps */
+
+.steps{margin-top:18px;padding-top:14px;border-top:2px solid #e2e8f0}
+
+.steps h3{font-size:.9rem;font-weight:700;margin-bottom:8px;color:#4a5568}
+
+.step{display:flex;gap:10px;align-items:flex-start;
+
+      margin-bottom:7px;font-size:.83rem;line-height:1.5}
+
+.sn{background:#3182ce;color:#fff;border-radius:50%;min-width:20px;height:20px;
+
+    display:flex;align-items:center;justify-content:center;
+
+    font-size:.7rem;font-weight:700;flex-shrink:0;margin-top:1px}
+
+#os{display:none}
+
+footer{text-align:center;font-size:.75rem;color:#a0aec0;
+
+       margin-top:24px;padding-bottom:16px}
+
+code{background:#e2e8f0;padding:1px 5px;border-radius:3px;
+
+     font-family:monospace;font-size:.82em}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="wrap">
+
+
+
+<h1>🗺️ Geo Dot-Matrix Label Generator</h1>
+
+<p class="sub">Generate GeoJSON polygon text labels for embedding in Power BI Shape Maps.
+
+Each character is built from rectangular polygons using a 5×7 dot-matrix pixel font.</p>
+
+
+
+<!-- PASTE FROM SPREADSHEET -->
+
+<div class="card">
+
+  <div class="ct">📋 Paste from Spreadsheet</div>
+
+  <div class="note">
+
+    In Excel or Google Sheets, select your <strong>Label</strong>, <strong>Latitude</strong>,
+
+    and <strong>Longitude</strong> columns and copy them (<kbd>Ctrl+C</kbd>).
+
+    Paste directly into the box below — a header row is fine, it will be ignored automatically.
+
+    Rows will appear in the manual editor below so you can review or adjust them.
+
+  </div>
+
+  <textarea id="pasteArea"
+
+            placeholder="Paste copied spreadsheet cells here (Label ⇥ Latitude ⇥ Longitude)&#10;&#10;e.g.&#10;NORTH YORKSHIRE	54.10	-1.80&#10;EAST RIDING	53.82	-0.50"
+
+            onpaste="setTimeout(importPaste, 20)"></textarea>
+
+  <div class="br">
+
+    <button class="btn blue" onclick="importPaste()">⬆ Import Rows</button>
+
+    <button class="btn gry" style="font-size:.8rem;padding:5px 11px"
+
+            onclick="clearPaste()">Clear Paste Area</button>
+
+    <span id="pasteMsg"></span>
+
+  </div>
+
+</div>
+
+
+
+<!-- LABELS -->
+
+<div class="card">
+
+  <div class="ct">📝 Labels <span style="font-size:.78rem;font-weight:400;color:#718096">
+
+    — review and adjust as needed, or enter manually</span></div>
+
+  <div class="note">
+
+    All text is automatically <strong>converted to UPPERCASE</strong>.
+
+    Enter the <strong>bottom-left corner</strong> (decimal degrees, WGS84) of each label.
+
+    Unsupported characters (e.g. accented letters) are silently skipped.
+
+  </div>
+
+  <div class="th">
+
+    <span>Label Text</span>
+
+    <span>Latitude (°N/S)</span>
+
+    <span>Longitude (°E/W)</span>
+
+    <span>Live Preview</span>
+
+    <span></span>
+
+  </div>
+
+  <div id="lbls"></div>
+
+  <div class="br">
+
+    <button class="btn add" onclick="addRow()">＋ Add Label</button>
+
+    <button class="btn gry" style="font-size:.8rem;padding:5px 11px"
+
+            onclick="clearAll()">Clear All</button>
+
+  </div>
+
+</div>
+
+
+
+<!-- OPTIONS -->
+
+<div class="card">
+
+  <div class="ct">⚙️ Rendering Options</div>
+
+  <div class="og">
+
+    <div class="oi">
+
+      <label for="pxs">Pixel Size (degrees)</label>
+
+      <input type="number" id="pxs" value="0.015" step="0.001" min="0.001" max="2">
+
+      <small>Size of each dot in geographic degrees.<br>
+
+        <strong>UK tip:</strong> 0.01–0.02° ≈ 700m–1.4 km per dot at 54°N.<br>
+
+        Larger value = bigger text on the map.</small>
+
+    </div>
+
+    <div class="oi">
+
+      <label for="chs">Character Spacing (dot-widths)</label>
+
+      <input type="number" id="chs" value="6" step="0.5" min="5" max="20">
+
+      <small>Horizontal space per character. The font is 5 dots wide, so:<br>
+
+        <strong>5</strong> = characters touch &nbsp;·&nbsp;
+
+        <strong>6</strong> = 1-dot gap (recommended)</small>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+
+<!-- GENERATE -->
+
+<div class="gw">
+
+  <button class="btn blue go" onclick="generate()">⚡ Generate GeoJSON</button>
+
+</div>
+
+
+
+<!-- OUTPUT -->
+
+<div class="card" id="os">
+
+  <div class="ct">📦 Output</div>
+
+  <div class="br">
+
+    <button class="btn grn" onclick="dlJSON()">⬇ Download .geojson</button>
+
+    <button class="btn gry" onclick="cpJSON(this)">📋 Copy to Clipboard</button>
+
+    <span class="pill" id="stats"></span>
+
+  </div>
+
+  <div class="ob" id="ob"></div>
+
+
+
+  <div class="steps">
+
+    <h3>Next Steps — Power BI Shape Map Workflow</h3>
+
+    <div class="step"><div class="sn">1</div>
+
+      <div>Download the <code>.geojson</code> file above.</div></div>
+
+
+
+    <div class="step"><div class="sn">2</div>
+
+      <div>Go to <strong>mapshaper.org</strong> → Import your geography's file (can
+
+	  be GeoJSON or TopoJSON, it doesn't seem to matter)
+
+      <strong>FIRST</strong> → also import this GeoJSON → Export both of these
+
+	  layers as TopoJSON.</div></div>
+
+
+
+    <div class="step"><div class="sn">3</div>
+
+      <div>Open <strong>geojson.io</strong> → import the merged TopoJSON →
+
+      <em>Meta → Flatten Multi Features</em>. This bakes the letter polygons
+
+      into the base-map topology so Power BI always renders them. Also, change the 
+
+	  file extension from .topojson to just .json (Power BI doesn't recognize the 
+
+	  .topojson extension 😔).</div></div>
+
+    <div class="step"><div class="sn">4</div>
+
+      <div>Load the result into Power BI's <strong>Shape Map</strong> visual
+
+      as a custom map.</div></div>
+
+    <div class="step"><div class="sn">5</div>
+
+      <div>In Power BI: <em>Format pane → Fill colors → Default color</em>
+
+      to choose your label color. Labels are always visible, independent of
+
+      the data layer.</div></div>
+
+    <div class="step"><div class="sn">💡</div>
+
+      <div>To reposition labels, adjust the lat/lng values here and regenerate.
+
+      You only need to redo the Mapshaper merge when the GeoJSON changes.</div></div>
+
+  </div>
+
+</div>
+
+
+
+<footer>Geographic dot-matrix label generator &bull;
+
+5×7 pixel font → GeoJSON polygon geometry &bull; For Power BI Shape Maps</footer>
+
+</div><!-- /wrap -->
+
+
+
+<script>
+
+// ═══════════════════════════════════════════════════════════════════
+
+// 5×7 DOT-MATRIX FONT
+
+// ═══════════════════════════════════════════════════════════════════
+
+const FONT = {
+
+  ' ':[[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]],
+
+  'A':[[0,1,1,1,0],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1]],
+
+  'B':[[1,1,1,1,0],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,0],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,0]],
+
+  'C':[[0,1,1,1,0],[1,0,0,0,1],[1,0,0,0,0],[1,0,0,0,0],[1,0,0,0,0],[1,0,0,0,1],[0,1,1,1,0]],
+
+  'D':[[1,1,1,1,0],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,0]],
+
+  'E':[[1,1,1,1,1],[1,0,0,0,0],[1,0,0,0,0],[1,1,1,1,0],[1,0,0,0,0],[1,0,0,0,0],[1,1,1,1,1]],
+
+  'F':[[1,1,1,1,1],[1,0,0,0,0],[1,0,0,0,0],[1,1,1,1,0],[1,0,0,0,0],[1,0,0,0,0],[1,0,0,0,0]],
+
+  'G':[[0,1,1,1,0],[1,0,0,0,1],[1,0,0,0,0],[1,0,0,1,1],[1,0,0,0,1],[1,0,0,0,1],[0,1,1,1,0]],
+
+  'H':[[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1]],
+
+  'I':[[0,1,1,1,0],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0],[0,1,1,1,0]],
+
+  'J':[[0,0,1,1,1],[0,0,0,1,0],[0,0,0,1,0],[0,0,0,1,0],[1,0,0,1,0],[1,0,0,1,0],[0,1,1,0,0]],
+
+  'K':[[1,0,0,0,1],[1,0,0,1,0],[1,0,1,0,0],[1,1,0,0,0],[1,0,1,0,0],[1,0,0,1,0],[1,0,0,0,1]],
+
+  'L':[[1,0,0,0,0],[1,0,0,0,0],[1,0,0,0,0],[1,0,0,0,0],[1,0,0,0,0],[1,0,0,0,0],[1,1,1,1,1]],
+
+  'M':[[1,0,0,0,1],[1,1,0,1,1],[1,0,1,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1]],
+
+  'N':[[1,0,0,0,1],[1,1,0,0,1],[1,0,1,0,1],[1,0,0,1,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1]],
+
+  'O':[[0,1,1,1,0],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[0,1,1,1,0]],
+
+  'P':[[1,1,1,1,0],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,0],[1,0,0,0,0],[1,0,0,0,0],[1,0,0,0,0]],
+
+  'Q':[[0,1,1,1,0],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,1,0,0],[1,0,0,1,0],[0,1,1,0,1]],
+
+  'R':[[1,1,1,1,0],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,0],[1,0,1,0,0],[1,0,0,1,0],[1,0,0,0,1]],
+
+  'S':[[0,1,1,1,0],[1,0,0,0,1],[1,0,0,0,0],[0,1,1,1,0],[0,0,0,0,1],[1,0,0,0,1],[0,1,1,1,0]],
+
+  'T':[[1,1,1,1,1],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0]],
+
+  'U':[[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[0,1,1,1,0]],
+
+  'V':[[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[0,1,0,1,0],[0,0,1,0,0]],
+
+  'W':[[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,1,0,1],[1,0,1,0,1],[1,1,0,1,1],[0,1,0,1,0]],
+
+  'X':[[1,0,0,0,1],[1,0,0,0,1],[0,1,0,1,0],[0,0,1,0,0],[0,1,0,1,0],[1,0,0,0,1],[1,0,0,0,1]],
+
+  'Y':[[1,0,0,0,1],[1,0,0,0,1],[0,1,0,1,0],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0]],
+
+  'Z':[[1,1,1,1,1],[0,0,0,0,1],[0,0,0,1,0],[0,0,1,0,0],[0,1,0,0,0],[1,0,0,0,0],[1,1,1,1,1]],
+
+  '0':[[0,1,1,1,0],[1,0,0,0,1],[1,0,0,1,1],[1,0,1,0,1],[1,1,0,0,1],[1,0,0,0,1],[0,1,1,1,0]],
+
+  '1':[[0,0,1,0,0],[0,1,1,0,0],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0],[0,1,1,1,0]],
+
+  '2':[[0,1,1,1,0],[1,0,0,0,1],[0,0,0,0,1],[0,0,0,1,0],[0,0,1,0,0],[0,1,0,0,0],[1,1,1,1,1]],
+
+  '3':[[0,1,1,1,0],[1,0,0,0,1],[0,0,0,0,1],[0,0,1,1,0],[0,0,0,0,1],[1,0,0,0,1],[0,1,1,1,0]],
+
+  '4':[[0,0,0,1,0],[0,0,1,1,0],[0,1,0,1,0],[1,0,0,1,0],[1,1,1,1,1],[0,0,0,1,0],[0,0,0,1,0]],
+
+  '5':[[1,1,1,1,1],[1,0,0,0,0],[1,1,1,1,0],[0,0,0,0,1],[0,0,0,0,1],[1,0,0,0,1],[0,1,1,1,0]],
+
+  '6':[[0,1,1,1,0],[1,0,0,0,1],[1,0,0,0,0],[1,1,1,1,0],[1,0,0,0,1],[1,0,0,0,1],[0,1,1,1,0]],
+
+  '7':[[1,1,1,1,1],[0,0,0,0,1],[0,0,0,1,0],[0,0,1,0,0],[0,1,0,0,0],[0,1,0,0,0],[0,1,0,0,0]],
+
+  '8':[[0,1,1,1,0],[1,0,0,0,1],[1,0,0,0,1],[0,1,1,1,0],[1,0,0,0,1],[1,0,0,0,1],[0,1,1,1,0]],
+
+  '9':[[0,1,1,1,0],[1,0,0,0,1],[1,0,0,0,1],[0,1,1,1,1],[0,0,0,0,1],[0,0,0,0,1],[0,1,1,1,0]],
+
+  '-':[[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[1,1,1,1,1],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]],
+
+  '.':[[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,1,1,0,0],[0,1,1,0,0]],
+
+  ',':[[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,1,1,0],[0,0,1,1,0],[0,1,0,0,0]],
+
+  "'":[[0,0,1,1,0],[0,0,1,1,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]],
+
+  '(':[[0,0,1,0,0],[0,1,0,0,0],[1,0,0,0,0],[1,0,0,0,0],[1,0,0,0,0],[0,1,0,0,0],[0,0,1,0,0]],
+
+  ')':[[0,0,1,0,0],[0,0,0,1,0],[0,0,0,0,1],[0,0,0,0,1],[0,0,0,0,1],[0,0,0,1,0],[0,0,1,0,0]],
+
+  '/':[[0,0,0,0,1],[0,0,0,1,0],[0,0,0,1,0],[0,0,1,0,0],[0,1,0,0,0],[0,1,0,0,0],[1,0,0,0,0]],
+
+  '&':[[0,1,1,0,0],[1,0,0,1,0],[1,0,1,0,0],[0,1,0,0,0],[1,0,1,0,1],[1,0,0,1,0],[0,1,1,0,1]],
+
+};
+
+
+
+// ═══════════════════════════════════════════════════════════════════
+
+// GEOMETRY
+
+// ═══════════════════════════════════════════════════════════════════
+
+function mergeRects(grid) {
+
+  const R = grid.length, C = grid[0].length;
+
+  const used = Array.from({length: R}, () => new Array(C).fill(false));
+
+  const out = [];
+
+  for (let r = 0; r < R; r++) {
+
+    for (let c = 0; c < C; c++) {
+
+      if (!grid[r][c] || used[r][c]) continue;
+
+      let w = 1;
+
+      while (c + w < C && grid[r][c + w] && !used[r][c + w]) w++;
+
+      let h = 1;
+
+      outer: while (r + h < R) {
+
+        for (let dc = 0; dc < w; dc++)
+
+          if (!grid[r + h][c + dc] || used[r + h][c + dc]) break outer;
+
+        h++;
+
+      }
+
+      for (let dr = 0; dr < h; dr++)
+
+        for (let dc = 0; dc < w; dc++)
+
+          used[r + dr][c + dc] = true;
+
+      out.push({ r, c, w, h });
+
+    }
+
+  }
+
+  return out;
+
+}
+
+
+
+const CHAR_H = 7;
+
+
+
+function textToFeatures(text, baseLat, baseLng, ps, cs) {
+
+  const upper = text.toUpperCase();
+
+  const feats = [];
+
+  for (let i = 0; i < upper.length; i++) {
+
+    const grid = FONT[upper[i]] || FONT[' '];
+
+    const xOff = i * cs * ps;
+
+    for (const { r, c, w, h } of mergeRects(grid)) {
+
+      const bot = baseLat + (CHAR_H - r - h) * ps;
+
+      const top = baseLat + (CHAR_H - r)     * ps;
+
+      const lft = baseLng + xOff +  c      * ps;
+
+      const rgt = baseLng + xOff + (c + w) * ps;
+
+      feats.push({
+
+        type: 'Feature',
+
+        properties: { label: text },
+
+        geometry: {
+
+          type: 'Polygon',
+
+          coordinates: [[[lft,bot],[rgt,bot],[rgt,top],[lft,top],[lft,bot]]]
+
+        }
+
+      });
+
+    }
+
+  }
+
+  return feats;
+
+}
+
+
+
+function buildGeoJSON(labels, ps, cs) {
+
+  return {
+
+    type: 'FeatureCollection',
+
+    features: labels.flatMap(l => textToFeatures(l.text, l.lat, l.lng, ps, cs))
+
+  };
+
+}
+
+
+
+// ═══════════════════════════════════════════════════════════════════
+
+// CANVAS PREVIEW
+
+// ═══════════════════════════════════════════════════════════════════
+
+const PX = 2;
+
+
+
+function drawPreview(id, text) {
+
+  const cv = document.getElementById('cv' + id);
+
+  if (!cv) return;
+
+  const up = text.toUpperCase();
+
+  cv.width  = Math.max(10, up.length * 6 * PX + 2);
+
+  cv.height = CHAR_H * PX + 2;
+
+  const ctx = cv.getContext('2d');
+
+  ctx.clearRect(0, 0, cv.width, cv.height);
+
+  ctx.fillStyle = '#2b6cb0';
+
+  for (let i = 0; i < up.length; i++) {
+
+    const g = FONT[up[i]] || FONT[' '];
+
+    const xb = i * 6 * PX + 1;
+
+    for (let r = 0; r < CHAR_H; r++)
+
+      for (let c = 0; c < 5; c++)
+
+        if (g[r][c]) ctx.fillRect(xb + c * PX, 1 + r * PX, PX, PX);
+
+  }
+
+}
+
+
+
+// ═══════════════════════════════════════════════════════════════════
+
+// SPREADSHEET PASTE IMPORT
+
+// ═══════════════════════════════════════════════════════════════════
+
+
+
+/**
+
+ * Parses tab-separated text copied from Excel / Google Sheets.
+
+ * Expects columns: Label \t Latitude \t Longitude
+
+ * Rows where Latitude or Longitude aren't numeric are silently
+
+ * skipped — this naturally discards any header row.
+
+ */
+
+function parseTSV(raw) {
+
+  const results = [];
+
+  for (const line of raw.trim().split(/\r?\n/)) {
+
+    if (!line.trim()) continue;
+
+    const cols = line.split('\t');
+
+    if (cols.length < 3) continue;
+
+    const text = cols[0].trim();
+
+    const lat  = parseFloat(cols[1]);
+
+    const lng  = parseFloat(cols[2]);
+
+    // Skip empty text or non-numeric coords (catches header rows)
+
+    if (!text || isNaN(lat) || isNaN(lng)) continue;
+
+    results.push({ text, lat, lng });
+
+  }
+
+  return results;
+
+}
+
+
+
+function importPaste() {
+
+  const raw = document.getElementById('pasteArea').value;
+
+  if (!raw.trim()) return; // nothing pasted yet — ignore silent auto-trigger
+
+
+
+  const rows = parseTSV(raw);
+
+  const msg  = document.getElementById('pasteMsg');
+
+
+
+  if (!rows.length) {
+
+    msg.className = 'paste-err';
+
+    msg.textContent = '⚠ No valid rows found — check columns are Label, Latitude, Longitude';
+
+    setTimeout(() => { msg.textContent = ''; }, 4000);
+
+    return;
+
+  }
+
+
+
+  // Replace label rows with imported data, keep one blank row at the end
+
+  document.getElementById('lbls').innerHTML = '';
+
+  uid = 0;
+
+  for (const r of rows) addRow(r.text, r.lat, r.lng);
+
+  addRow(); // blank row ready for extras
+
+
+
+  msg.className = 'paste-ok';
+
+  msg.textContent = `✅ ${rows.length} row${rows.length !== 1 ? 's' : ''} imported`;
+
+  setTimeout(() => { msg.textContent = ''; }, 3000);
+
+
+
+  // Scroll down to show the populated label table
+
+  document.getElementById('lbls').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+}
+
+
+
+function clearPaste() {
+
+  document.getElementById('pasteArea').value = '';
+
+  document.getElementById('pasteMsg').textContent = '';
+
+}
+
+
+
+// ═══════════════════════════════════════════════════════════════════
+
+// MANUAL LABEL ROW UI
+
+// ═══════════════════════════════════════════════════════════════════
+
+let uid = 0;
+
+let lastJSON = null;
+
+
+
+function esc(s) {
+
+  return String(s)
+
+    .replace(/&/g,'&amp;').replace(/"/g,'&quot;')
+
+    .replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+}
+
+
+
+function addRow(text = '', lat = '', lng = '') {
+
+  const id = uid++;
+
+  const el = document.createElement('div');
+
+  el.className = 'lr';
+
+  el.id = 'r' + id;
+
+  el.innerHTML = `
+
+    <input type="text"   id="t${id}" placeholder="e.g. NORTH YORKSHIRE"
+
+           value="${esc(text)}" oninput="drawPreview(${id}, this.value)">
+
+    <input type="number" id="a${id}" placeholder="54.00"
+
+           value="${esc(lat)}" step="0.001">
+
+    <input type="number" id="g${id}" placeholder="-1.50"
+
+           value="${esc(lng)}" step="0.001">
+
+    <div class="pvw">
+
+      <canvas class="pc" id="cv${id}"
+
+              width="10" height="${CHAR_H * PX + 2}"></canvas>
+
+    </div>
+
+    <button class="btn rm" onclick="delRow(${id})" title="Remove">×</button>
+
+  `;
+
+  document.getElementById('lbls').appendChild(el);
+
+  if (text) drawPreview(id, text);
+
+}
+
+
+
+function delRow(id) {
+
+  const el = document.getElementById('r' + id);
+
+  if (el) el.remove();
+
+}
+
+
+
+function clearAll() {
+
+  document.getElementById('lbls').innerHTML = '';
+
+  uid = 0;
+
+  addRow();
+
+}
+
+
+
+function gather() {
+
+  const labels = [], errs = [];
+
+  for (const row of document.querySelectorAll('.lr')) {
+
+    const id  = row.id.slice(1);
+
+    const tEl = document.getElementById('t' + id);
+
+    const aEl = document.getElementById('a' + id);
+
+    const gEl = document.getElementById('g' + id);
+
+    if (!tEl) continue;
+
+    const text = tEl.value.trim();
+
+    if (!text) continue;
+
+    const lat  = parseFloat(aEl.value);
+
+    const lng  = parseFloat(gEl.value);
+
+    if (isNaN(lat) || isNaN(lng)) {
+
+      errs.push(`"${text}": missing or invalid coordinates`);
+
+      continue;
+
+    }
+
+    labels.push({ text, lat, lng });
+
+  }
+
+  return { labels, errs };
+
+}
+
+
+
+function generate() {
+
+  const { labels, errs } = gather();
+
+  if (errs.length)    { alert('Please fix:\n\n' + errs.join('\n')); return; }
+
+  if (!labels.length) { alert('Add at least one label with text and coordinates.'); return; }
+
+
+
+  const ps = Math.abs(parseFloat(document.getElementById('pxs').value)) || 0.015;
+
+  const cs = Math.abs(parseFloat(document.getElementById('chs').value)) || 6;
+
+
+
+  lastJSON = buildGeoJSON(labels, ps, cs);
+
+  document.getElementById('ob').textContent = JSON.stringify(lastJSON, null, 2);
+
+  document.getElementById('stats').textContent =
+
+    `${lastJSON.features.length} polygons · ${labels.length} label(s)`;
+
+
+
+  const sec = document.getElementById('os');
+
+  sec.style.display = 'block';
+
+  sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+}
+
+
+
+function dlJSON() {
+
+  if (!lastJSON) return;
+
+  const a = document.createElement('a');
+
+  a.href = URL.createObjectURL(
+
+    new Blob([JSON.stringify(lastJSON, null, 2)], { type: 'application/geo+json' })
+
+  );
+
+  a.download = 'dot-matrix-labels.geojson';
+
+  a.click();
+
+  URL.revokeObjectURL(a.href);
+
+}
+
+
+
+function cpJSON(btn) {
+
+  const text = document.getElementById('ob').textContent;
+
+  const orig = btn.textContent;
+
+  const restore = () => { btn.textContent = orig; };
+
+  navigator.clipboard.writeText(text)
+
+    .then(() => { btn.textContent = '✅ Copied!'; setTimeout(restore, 2000); })
+
+    .catch(() => {
+
+      const ta = document.createElement('textarea');
+
+      Object.assign(ta.style, { position:'fixed', top:'0', left:'0', opacity:'0' });
+
+      ta.value = text;
+
+      document.body.appendChild(ta);
+
+      ta.select();
+
+      document.execCommand('copy');
+
+      document.body.removeChild(ta);
+
+      btn.textContent = '✅ Copied!';
+
+      setTimeout(restore, 2000);
+
+    });
+
+}
+
+
+
+// ─── Initialise ──────────────────────────────────────────────────
+
+addRow('NORTH YORKSHIRE', 54.10, -1.80);
+
+addRow('EAST RIDING',     53.82, -0.50);
+
+addRow();
+
+</script>
+
+</body>
+
 </html>
